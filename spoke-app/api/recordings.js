@@ -83,29 +83,34 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { audio_base64, audio_type = 'audio/webm' } = req.body;
+  // Accept either a pre-built transcript (from chunked flow) or raw audio
+  const { transcript: prebuiltTranscript, audio_base64, audio_type = 'audio/webm' } = req.body;
 
-  if (!audio_base64) {
-    return res.status(400).json({ error: 'audio_base64 is required' });
+  if (!prebuiltTranscript && !audio_base64) {
+    return res.status(400).json({ error: 'transcript or audio_base64 is required' });
   }
 
   try {
-    // Step 1: Convert base64 to a File object for Whisper
-    const audioBuffer = Buffer.from(audio_base64, 'base64');
-    const mimeType = audio_type || 'audio/webm';
-    const extension = MIME_TO_EXT[mimeType] ?? mimeType.split('/')[1] ?? 'webm';
-    const audioFile = new File([audioBuffer], `recording.${extension}`, {
-      type: mimeType,
-    });
+    let transcript;
 
-    // Step 2: Transcribe with OpenAI Whisper
-    const transcription = await openai.audio.transcriptions.create({
-      file: audioFile,
-      model: 'whisper-1',
-    });
-    const transcript = transcription.text;
+    if (prebuiltTranscript) {
+      // Chunked flow: transcript already built by the frontend
+      transcript = prebuiltTranscript;
+    } else {
+      // Single file flow: transcribe here
+      const audioBuffer = Buffer.from(audio_base64, 'base64');
+      const mimeType = audio_type || 'audio/webm';
+      const extension = MIME_TO_EXT[mimeType] ?? mimeType.split('/')[1] ?? 'webm';
+      const audioFile = new File([audioBuffer], `recording.${extension}`, { type: mimeType });
 
-    // Step 3: Format with Anthropic Claude
+      const transcription = await openai.audio.transcriptions.create({
+        file: audioFile,
+        model: 'whisper-1',
+      });
+      transcript = transcription.text;
+    }
+
+    // Step 2 (or 3): Format with Anthropic Claude
     const message = await anthropic.messages.create({
       model: 'claude-opus-4-6',
       max_tokens: 2048,
@@ -120,6 +125,7 @@ export default async function handler(req, res) {
     // Parse Claude's JSON response
     let formats;
     const rawText = message.content[0].text;
+    console.log('[Claude raw]', rawText.slice(0, 500));
     try {
       formats = JSON.parse(rawText);
     } catch {

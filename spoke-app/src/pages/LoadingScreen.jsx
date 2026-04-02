@@ -19,7 +19,7 @@ export default function LoadingScreen() {
 
       <div className="text-center">
         <p className="text-[#f5f5f0]/80 text-lg font-medium">Transcribing your recording...</p>
-        <p className="text-[#f5f5f0]/40 text-sm mt-2">Usually takes 15–30 seconds</p>
+        <p className="text-[#f5f5f0]/40 text-sm mt-2">Longer recordings may take up to a minute</p>
       </div>
     </div>
   );
