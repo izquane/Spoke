@@ -1,168 +1,99 @@
-# Spoke v0.0.2 — Claude Reference
+# Spoke — Workspace Map
 
-**Mission:** Voice-to-medium translator for non-writers. Speak your thoughts on the go. Spoke translates them into platform-ready content in your authentic voice.
+## What This Is
 
-**Core value:** You sound like the best version of yourself, not like an AI.
+A voice-to-content translator. Record or upload audio, get back tweet options, a thread, long-form prose, and an Instagram caption — all in your authentic voice.
 
-## Core Loop
+**CONTEXT.md** (top-level) routes to the right workspace for each task.
 
-1. **Record** — In-app audio (30 sec - 10 min) or upload audio file
-2. **Transcribe** — Whisper API
-3. **Format** — Claude structures it 4 ways (authenticity-first):
-   - Tweet options (5 angles, 280 chars each)
-   - Thread (3-5 tweets, narrative arc)
-   - Long-form (500-1000 words, Substack-ready)
-   - Instagram caption (punchy, visual, hashtag-ready)
-4. **Copy** — One-tap copy each format
-5. **Paste** — User manually posts to X, Threads, Substack, Instagram
+---
 
-## Formatting Philosophy
-
-**Authenticity-first:** Default output preserves the speaker's exact voice, word choices, and rhythm. Claude removes noise (filler words, repetition, tangents) but does not rewrite or impose structure.
-
-**Framework overlay (optional):** If the user wants more reach or structure, they apply a framework as a second pass. Frameworks restructure the authentic output — they don't replace it.
-
-**The dial:** Authentic ←————→ Engineered for reach
-
-## Stack
-
-**Frontend:** React + Tailwind CSS
-**Backend:** Supabase (auth mock, database)
-**APIs:** Whisper + Claude
-**Hosting:** Vercel (auto-deploy on git push)
-
-## Frontend Architecture
-
-### Pages
-
-**1. Home/Record Screen**
-- Large red "Start Recording" button
-- Timer (shows elapsed time during recording)
-- Stop button
-- Playback (listen before submit)
-- Upload mode toggle (for pre-recorded files)
-- Submit button → POST /recordings
-
-**2. Loading Screen**
-- "Transcribing..." animation
-- Status text
-
-**3. Output Screen (Core)**
-- 4 tabs: Tweet | Thread | Long-form | Caption
-- Tweet tab: 5 options, each a different angle, each with its own copy button
-- Thread tab: 3-5 tweets with copy full thread button
-- Long-form tab: structured prose with copy button
-- Caption tab: Instagram-ready with copy button
-- "Start new recording" button
-
-### Design
-
-- **Colors:** Deep blue bg (#1a1a2e), orange CTA (#ff6b35), cream text (#f5f5f0)
-- **Typography:** Clean sans-serif, generous spacing
-- **Components:** Large buttons (thumb-friendly), card layout, copy feedback toast
-
-## Backend
-
-### Database Schema
-
-```
-RECORDINGS table:
-- id (uuid, primary key)
-- raw_audio (file path or URL)
-- transcript (text from Whisper)
-- formats: {
-    tweet: array of strings (5 options),
-    thread: array of strings,
-    longform: string,
-    caption: string
-  }
-- created_at
-```
-
-### API Endpoints
-
-**POST /recordings**
-- Input: audio_base64 + audio_type (JSON)
-- Process:
-  1. Decode base64 audio
-  2. Call Whisper API → transcript
-  3. Call Claude (authenticity-first) → 4 formats
-  4. Store in Supabase
-  5. Return formats
-- Output: `{ transcript, formats: { tweet, thread, longform, caption }, recording_id }`
-
-**GET /recordings/:id**
-- Retrieve cached formats + transcript
-
-## Formatting Prompt Philosophy
-
-Default prompt is authenticity-first:
-- Preserve speaker's voice, rhythm, sentence patterns
-- Remove filler words only (um, uh, like, you know)
-- Do not rewrite, reframe, or impose structure
-- Keep first-person perspective
-- Preserve spoken cadence in tweets (short sentences, fragments, line breaks)
-
-## Tech Notes
-
-- **Whisper:** Requires API key in .env
-- **Claude:** Requires API key in .env
-- **Supabase:** Free tier covers MVP
-- **Vercel:** Auto-deploys on git push (connect GitHub)
-- **Local dev:** Two terminals — `npm run dev:api` (port 3001) + `npm run dev` (port 5173)
-
-## Success Criteria
-
-- Record → transcribe → format in < 2 minutes
-- 80%+ of outputs are copy-paste ready without editing
-- Outputs sound like the speaker, not like AI
-- User can get from audio to copied post without sitting at a desk
-
-## Scope (v0.0.2)
-
-**Must have:**
-- Record + upload (done)
-- Whisper integration (done)
-- Authenticity-first formatting prompt
-- 5 tweet options (done)
-- Instagram caption as 4th format
-- Polish: smoother UX, cleaner loading states
-
-**Skip:**
-- Framework selection UI (v0.1)
-- Custom framework input (v0.1)
-- Voice fingerprinting (v0.2)
-- Goal tracking
-- Drafts/history
-- Mobile (yet)
-- Auth
-- Scheduling
-
-## Project Structure
+## Folder Structure
 
 ```
 spoke/
-├── CLAUDE.md          ← You are here (always loaded)
-├── CONTEXT.md         ← Task router — go here to find what file to edit
-├── README.md          ← Public-facing readme
-└── spoke-app/         ← The actual application code
-    ├── api/           ← Vercel serverless functions (Whisper + Claude + Supabase)
-    ├── src/           ← React frontend (pages, components, lib)
+├── CLAUDE.md                         ← You are here (always loaded)
+├── CONTEXT.md                        ← Task router
+├── docs/
+│   └── superpowers/
+│       ├── plans/                    ← Implementation plans
+│       └── specs/                    ← Design docs
+│
+└── spoke-app/                        ← The actual web app
+    ├── api/                          ← Vercel serverless functions
+    │   ├── transcribe.js             ← POST /api/transcribe (Whisper)
+    │   ├── recordings.js             ← POST /api/recordings (Claude formatting)
+    │   └── framework.js              ← POST /api/framework (framework overlay)
+    ├── src/
+    │   ├── pages/                    ← Screen-level components (RecordScreen, OutputScreen, LoadingScreen)
+    │   ├── components/               ← Reusable UI (CopyButton)
+    │   └── lib/                      ← api.js, audioChunker.js
+    ├── engineering/
+    │   ├── docs/                     ← Tech standards, architecture decisions
+    │   └── workflows/
+    │       ├── 01-briefs/            ← What to build
+    │       ├── 02-specs/             ← How to build it
+    │       ├── 03-builds/            ← Active work
+    │       └── 04-output/            ← Shipped features / changelogs
+    ├── product/
+    │   ├── research/                 ← User research, competitive analysis
+    │   └── specs/                    ← Feature specs
     ├── index.html
     ├── package.json
-    ├── .env.example   ← Copy to .env and fill in keys before running
-    └── vercel.json
+    ├── vercel.json
+    └── .env.example
 ```
 
-See **CONTEXT.md** for the full file map and task routing table.
+---
+
+## Quick Navigation
+
+| Want to... | Go here |
+|---|---|
+| **Build a feature** | `engineering/CONTEXT.md` |
+| **Define what to build** | `product/CONTEXT.md` |
+| **Write a feature spec** | `product/specs/` |
+| **Edit the transcription logic** | `api/transcribe.js` |
+| **Edit the Claude formatting prompt** | `api/recordings.js` — `FORMATTING_PROMPT` constant |
+| **Edit the framework overlay prompt** | `api/framework.js` — `FRAMEWORK_PROMPT` constant |
+| **Add a screen** | `src/pages/` |
+| **Add a reusable component** | `src/components/` |
+| **Edit the audio chunking logic** | `src/lib/audioChunker.js` |
+| **Edit API fetch wrappers** | `src/lib/api.js` |
+
+---
+
+## Core Constraints (Always Active)
+
+- **No Supabase until drafts/history (v0.3).** The app is stateless — record → transcribe → format → copy. Nothing is stored.
+- **`src/lib/` = no React imports.** Pure JS only.
+- **`src/components/` = no business logic.** UI only.
+- **Vercel Functions only.** All API logic in `api/`. No Express routes in production.
+- **Chunking threshold = 2.5MB.** Base64 adds 33% overhead; anything larger hits Vercel's 4.5MB body limit.
+
+---
+
+## Tech Stack
+
+| Layer | Current | Future |
+|---|---|---|
+| Frontend | React + Tailwind + Vite | Same |
+| API | Vercel Serverless Functions | Same |
+| Transcription | OpenAI Whisper (`whisper-1`) | Same |
+| Formatting | Anthropic Claude (`claude-opus-4-6`) | Same |
+| Storage | None | Supabase (v0.3) |
+| Auth | None | v1.0 |
+| Mobile | None | React Native (v1.0) |
 
 ---
 
 ## Roadmap
 
-**v0.0.2:** Authenticity-first prompt + Instagram caption + UX polish
-**v0.1:** Custom framework input (paste your own framework or JK Molina-style rules)
-**v0.2:** Voice fingerprinting (paste your best writing, Spoke learns your style)
-**v0.3:** Framework library (pre-built: Insight, StoryBrand, PAS, etc.) + drafts/history
-**v1.0:** React Native mobile + TestFlight + social ingestion (X/Substack/Threads API to auto-build voice profile)
-**v1.5:** Buffer integration + scheduling
+| Version | Scope |
+|---|---|
+| **v0.0.2** | Record + upload, Whisper, authenticity-first Claude prompt, 4 formats, framework overlay ✅ |
+| **v0.1** | UX polish, better loading states, error handling |
+| **v0.2** | Voice fingerprinting (paste your writing, Spoke learns your style) |
+| **v0.3** | Drafts/history + Supabase |
+| **v1.0** | React Native + TestFlight + social ingestion |
+| **v1.5** | Scheduling + Buffer integration |
