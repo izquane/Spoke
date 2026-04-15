@@ -8,7 +8,7 @@
 // Response (JSON):
 //   { recording_id, transcript, formats: { tweet, thread, longform } }
 
-import OpenAI from 'openai';
+import OpenAI, { toFile } from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
 import { createClient } from '@supabase/supabase-js';
 
@@ -90,7 +90,7 @@ export default async function handler(req, res) {
       const audioBuffer = Buffer.from(audio_base64, 'base64');
       const mimeType = audio_type || 'audio/webm';
       const extension = MIME_TO_EXT[mimeType] ?? mimeType.split('/')[1] ?? 'webm';
-      const audioFile = new File([audioBuffer], `recording.${extension}`, { type: mimeType });
+      const audioFile = await toFile(audioBuffer, `recording.${extension}`, { type: mimeType });
 
       const transcription = await openai.audio.transcriptions.create({
         file: audioFile,

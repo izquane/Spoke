@@ -8,7 +8,7 @@
 // Response (JSON):
 //   { transcript: string }
 
-import OpenAI from 'openai';
+import OpenAI, { toFile } from 'openai';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -38,7 +38,7 @@ export default async function handler(req, res) {
     const audioBuffer = Buffer.from(audio_base64, 'base64');
     const mimeType = audio_type || 'audio/mp4';
     const extension = MIME_TO_EXT[mimeType] ?? mimeType.split('/')[1] ?? 'mp4';
-    const audioFile = new File([audioBuffer], `chunk.${extension}`, { type: mimeType });
+    const audioFile = await toFile(audioBuffer, `chunk.${extension}`, { type: mimeType });
 
     const transcription = await openai.audio.transcriptions.create({
       file: audioFile,
