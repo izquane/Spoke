@@ -2,7 +2,7 @@
 
 import { splitAudioIntoChunks } from './audioChunker.js';
 
-const LARGE_FILE_THRESHOLD = 10 * 1024 * 1024; // 10MB — above this we chunk via Web Audio API
+const LARGE_FILE_THRESHOLD = 2.5 * 1024 * 1024; // 2.5MB — base64 adds 33%, so this stays under Vercel's 4.5MB body limit
 
 /**
  * Submits an audio Blob to the backend pipeline.
