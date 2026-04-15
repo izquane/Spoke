@@ -13,9 +13,9 @@ This file routes you to the right workspace for your task.
 
 | Your Task | Go Here | You'll Also Need |
 |---|---|---|
-| **Define a new feature** | `spoke-app/product/` | Nothing — start fresh |
-| **Write a feature spec** | `spoke-app/product/specs/` | Nothing |
-| **Plan a technical build** | `spoke-app/engineering/` | Spec from `product/specs/` |
+| **Define a new feature** | `product/CONTEXT.md` | Nothing — start fresh |
+| **Write a feature spec** | `product/specs/` | Nothing |
+| **Plan a technical build** | `engineering/CONTEXT.md` | Spec from `product/specs/` |
 | **Edit the Claude formatting prompt** | `spoke-app/api/recordings.js` | `FORMATTING_PROMPT` constant |
 | **Edit the framework overlay** | `spoke-app/api/framework.js` | `FRAMEWORK_PROMPT` constant |
 | **Edit transcription logic** | `spoke-app/api/transcribe.js` | — |
@@ -31,8 +31,8 @@ This file routes you to the right workspace for your task.
 
 | Workspace | Purpose |
 |---|---|
-| `spoke-app/product/` | What to build + why. Specs, research. |
-| `spoke-app/engineering/` | How to build it. 4-stage pipeline: brief → spec → build → output. |
+| `product/` | What to build + why. Specs, roadmap. |
+| `engineering/` | How to build it. 4-stage pipeline: brief → spec → build → output. |
 | `spoke-app/api/` | Serverless functions. Whisper + Claude. |
 | `spoke-app/src/` | React frontend. Pages, components, lib. |
 | `docs/superpowers/` | Design docs and implementation plans from planning sessions. |

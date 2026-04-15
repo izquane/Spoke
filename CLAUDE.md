@@ -14,10 +14,21 @@ A voice-to-content translator. Record or upload audio, get back tweet options, a
 spoke/
 ├── CLAUDE.md                         ← You are here (always loaded)
 ├── CONTEXT.md                        ← Task router
-├── docs/
-│   └── superpowers/
-│       ├── plans/                    ← Implementation plans
-│       └── specs/                    ← Design docs
+├── docs/superpowers/
+│   ├── plans/                        ← Implementation plans
+│   └── specs/                        ← Design docs
+├── engineering/
+│   ├── CONTEXT.md
+│   ├── docs/tech-stack.md            ← Tech standards, constraints
+│   └── workflows/
+│       ├── 01-briefs/                ← What to build
+│       ├── 02-specs/                 ← How to build it
+│       ├── 03-builds/                ← Active work
+│       └── 04-output/                ← Shipped features / changelogs
+├── product/
+│   ├── CONTEXT.md
+│   ├── specs/                        ← Feature specs
+│   └── versions/ROADMAP.md
 │
 └── spoke-app/                        ← The actual web app
     ├── api/                          ← Vercel serverless functions
@@ -28,16 +39,6 @@ spoke/
     │   ├── pages/                    ← Screen-level components (RecordScreen, OutputScreen, LoadingScreen)
     │   ├── components/               ← Reusable UI (CopyButton)
     │   └── lib/                      ← api.js, audioChunker.js
-    ├── engineering/
-    │   ├── docs/                     ← Tech standards, architecture decisions
-    │   └── workflows/
-    │       ├── 01-briefs/            ← What to build
-    │       ├── 02-specs/             ← How to build it
-    │       ├── 03-builds/            ← Active work
-    │       └── 04-output/            ← Shipped features / changelogs
-    ├── product/
-    │   ├── research/                 ← User research, competitive analysis
-    │   └── specs/                    ← Feature specs
     ├── index.html
     ├── package.json
     ├── vercel.json
