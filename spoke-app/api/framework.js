@@ -10,14 +10,6 @@
 
 import Anthropic from '@anthropic-ai/sdk';
 
-export const config = {
-  api: {
-    bodyParser: {
-      sizeLimit: '1mb',
-    },
-  },
-};
-
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 const FRAMEWORK_PROMPT = `You are a voice-to-writing translator. Apply the framework below to reformat this transcript into platform-ready content.

@@ -49,17 +49,6 @@ Rules:
 
 Do not add ideas that weren't in the transcript. Do not use corporate or AI-sounding language. If the speaker used slang or informal phrasing, keep it.`;
 
-// ─── Config ──────────────────────────────────────────────────────────────────
-// Raise Vercel's default 4.5 MB body limit to handle larger audio files.
-
-export const config = {
-  api: {
-    bodyParser: {
-      sizeLimit: '25mb',
-    },
-  },
-};
-
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 const MIME_TO_EXT = {

@@ -10,14 +10,6 @@
 
 import OpenAI from 'openai';
 
-export const config = {
-  api: {
-    bodyParser: {
-      sizeLimit: '15mb',
-    },
-  },
-};
-
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 const MIME_TO_EXT = {
