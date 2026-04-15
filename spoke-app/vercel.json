@@ -3,8 +3,7 @@
   "outputDirectory": "dist",
   "functions": {
     "api/**/*.js": {
-      "maxDuration": 60,
-      "maxRequestBodySize": "15mb"
+      "maxDuration": 60
     }
   },
   "rewrites": [
