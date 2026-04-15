@@ -1,30 +1,19 @@
 // api/recordings.js — POST /api/recordings
-// The core pipeline: audio → Whisper transcript → Claude formats → Supabase → response
+// Accepts a transcript, formats it with Claude, returns 4 content formats.
 //
 // Request body (JSON):
-//   audio_base64: string  — base64-encoded audio (no data URI prefix)
-//   audio_type: string    — MIME type, e.g. "audio/webm"
+//   transcript: string   — pre-built transcript from /api/transcribe
+//   audio_base64: string — (fallback) base64-encoded audio to transcribe here
+//   audio_type: string   — MIME type, e.g. "audio/webm"
 //
 // Response (JSON):
-//   { recording_id, transcript, formats: { tweet, thread, longform } }
+//   { transcript, formats: { tweet, thread, longform, caption } }
 
 import OpenAI, { toFile } from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
-import { createClient } from '@supabase/supabase-js';
-
-// ─── Clients ─────────────────────────────────────────────────────────────────
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
-
-// ─── Formatting prompt ───────────────────────────────────────────────────────
-// To change the framework or output format, edit this prompt.
 
 const FORMATTING_PROMPT = `You are a voice-to-writing translator. Your job is to turn a spoken audio transcript into platform-ready written content.
 
@@ -49,8 +38,6 @@ Rules:
 
 Do not add ideas that weren't in the transcript. Do not use corporate or AI-sounding language. If the speaker used slang or informal phrasing, keep it.`;
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
 const MIME_TO_EXT = {
   'audio/webm': 'webm',
   'audio/ogg': 'ogg',
@@ -65,14 +52,11 @@ const MIME_TO_EXT = {
   'audio/x-flac': 'flac',
 };
 
-// ─── Handler ─────────────────────────────────────────────────────────────────
-
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Accept either a pre-built transcript (from chunked flow) or raw audio
   const { transcript: prebuiltTranscript, audio_base64, audio_type = 'audio/webm' } = req.body;
 
   if (!prebuiltTranscript && !audio_base64) {
@@ -83,15 +67,12 @@ export default async function handler(req, res) {
     let transcript;
 
     if (prebuiltTranscript) {
-      // Chunked flow: transcript already built by the frontend
       transcript = prebuiltTranscript;
     } else {
-      // Single file flow: transcribe here
       const audioBuffer = Buffer.from(audio_base64, 'base64');
       const mimeType = audio_type || 'audio/webm';
       const extension = MIME_TO_EXT[mimeType] ?? mimeType.split('/')[1] ?? 'webm';
       const audioFile = await toFile(audioBuffer, `recording.${extension}`, { type: mimeType });
-
       const transcription = await openai.audio.transcriptions.create({
         file: audioFile,
         model: 'whisper-1',
@@ -99,59 +80,28 @@ export default async function handler(req, res) {
       transcript = transcription.text;
     }
 
-    // Step 2 (or 3): Format with Anthropic Claude
     const message = await anthropic.messages.create({
       model: 'claude-opus-4-6',
       max_tokens: 2048,
-      messages: [
-        {
-          role: 'user',
-          content: FORMATTING_PROMPT.replace('{TRANSCRIPT}', transcript),
-        },
-      ],
+      messages: [{ role: 'user', content: FORMATTING_PROMPT.replace('{TRANSCRIPT}', transcript) }],
     });
 
-    // Parse Claude's JSON response
     let formats;
     const rawText = message.content[0].text;
-    console.log('[Claude raw]', rawText.slice(0, 500));
     try {
       formats = JSON.parse(rawText);
     } catch {
-      // Claude sometimes wraps JSON in markdown code fences — strip them
       const jsonMatch = rawText.match(/\{[\s\S]*\}/);
       if (!jsonMatch) throw new Error('Claude returned unparseable output');
       formats = JSON.parse(jsonMatch[0]);
     }
 
-    // Normalize: ensure tweet is always an array
-    if (typeof formats.tweet === 'string') {
-      formats.tweet = [formats.tweet];
-    }
-    // Normalize: ensure caption always exists
-    if (!formats.caption) {
-      formats.caption = '';
-    }
+    if (typeof formats.tweet === 'string') formats.tweet = [formats.tweet];
+    if (!formats.caption) formats.caption = '';
 
-    // Step 4: Store in Supabase
-    const { data, error: dbError } = await supabase
-      .from('recordings')
-      .insert({ transcript, formats })
-      .select('id')
-      .single();
-
-    if (dbError) throw dbError;
-
-    // Step 5: Return everything to the frontend
-    return res.status(200).json({
-      recording_id: data.id,
-      transcript,
-      formats,
-    });
+    return res.status(200).json({ transcript, formats });
   } catch (error) {
     console.error('[/api/recordings] Error:', error);
-    return res.status(500).json({
-      error: error.message || 'Failed to process recording',
-    });
+    return res.status(500).json({ error: error.message || 'Failed to process recording' });
   }
 }

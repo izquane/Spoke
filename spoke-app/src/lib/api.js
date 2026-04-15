@@ -113,20 +113,6 @@ export async function applyFramework(transcript, framework) {
   return response.json();
 }
 
-/**
- * Fetches a previously processed recording by ID.
- */
-export async function getRecording(id) {
-  const response = await fetch(`/api/recordings/${id}`);
-
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({}));
-    throw new Error(err.error || `Not found (${response.status})`);
-  }
-
-  return response.json();
-}
-
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function blobToBase64(blob) {
