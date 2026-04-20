@@ -9,6 +9,7 @@ import transcribeHandler from './api/transcribe.js';
 
 const app = express();
 app.use(express.json({ limit: '25mb' }));
+app.use(express.raw({ type: 'application/octet-stream', limit: '25mb' }));
 
 app.post('/api/recordings', recordingsHandler);
 app.post('/api/framework', frameworkHandler);

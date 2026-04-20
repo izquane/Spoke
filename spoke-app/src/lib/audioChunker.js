@@ -4,7 +4,7 @@
 // and re-encodes each as a WAV Blob (~3.8MB each, safe under API limits).
 
 const TARGET_SAMPLE_RATE = 16000; // Whisper only needs 16kHz
-const CHUNK_DURATION_SECS = 90; // 90 seconds per chunk — ~2.8MB raw, ~3.7MB base64, under Vercel's 4.5MB limit
+const CHUNK_DURATION_SECS = 60; // 60 seconds per chunk — ~1.8MB raw, ~2.4MB base64, well under Vercel's body limit
 
 /**
  * Takes an audio Blob, downsamples to 16kHz mono, splits into chunks,

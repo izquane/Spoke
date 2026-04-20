@@ -31,13 +31,12 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { audio_base64, audio_type = 'audio/mp4' } = req.body;
-  if (!audio_base64) return res.status(400).json({ error: 'audio_base64 is required' });
-
   try {
-    const audioBuffer = Buffer.from(audio_base64, 'base64');
-    const mimeType = audio_type || 'audio/mp4';
-    const extension = MIME_TO_EXT[mimeType] ?? mimeType.split('/')[1] ?? 'mp4';
+    const mimeType = req.headers['x-audio-type'] || 'audio/wav';
+    const audioBuffer = Buffer.isBuffer(req.body) ? req.body : Buffer.from(req.body);
+    if (!audioBuffer.length) return res.status(400).json({ error: 'No audio data provided' });
+
+    const extension = MIME_TO_EXT[mimeType] ?? mimeType.split('/')[1] ?? 'wav';
     const audioFile = await toFile(audioBuffer, `chunk.${extension}`, { type: mimeType });
 
     const transcription = await openai.audio.transcriptions.create({
