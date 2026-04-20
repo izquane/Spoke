@@ -1,15 +1,24 @@
 // App.jsx — Screen state machine
-// Screens: 'record' | 'loading' | 'output'
-// Flow: RecordScreen → (submit audio) → LoadingScreen → (API returns) → OutputScreen
+// Screens: 'setup' | 'record' | 'loading' | 'output'
+// Flow (first visit):  SetupScreen → RecordScreen → LoadingScreen → OutputScreen
+// Flow (return visit): RecordScreen → LoadingScreen → OutputScreen
 
 import { useState } from 'react';
+import SetupScreen from './pages/SetupScreen';
 import RecordScreen from './pages/RecordScreen';
 import LoadingScreen from './pages/LoadingScreen';
 import OutputScreen from './pages/OutputScreen';
-import { submitRecording } from './lib/api';
+import { submitRecording, reformatTranscript } from './lib/api';
+
+function hasVoiceProfile() {
+  return (
+    !!localStorage.getItem('spoke_voice_examples') &&
+    !!localStorage.getItem('spoke_writing_intent')
+  );
+}
 
 export default function App() {
-  const [screen, setScreen] = useState('record');
+  const [screen, setScreen] = useState(() => (hasVoiceProfile() ? 'record' : 'setup'));
   const [output, setOutput] = useState(null);
   const [error, setError] = useState(null);
 
@@ -18,8 +27,11 @@ export default function App() {
     setScreen('loading');
     setError(null);
 
+    const voiceExamples = localStorage.getItem('spoke_voice_examples') || '';
+    const writingIntent = localStorage.getItem('spoke_writing_intent') || '';
+
     try {
-      const data = await submitRecording(audioBlob);
+      const data = await submitRecording(audioBlob, { voiceExamples, writingIntent });
       setOutput(data);
       setScreen('output');
     } catch (err) {
@@ -27,6 +39,14 @@ export default function App() {
       setError(err.message || 'Something went wrong. Please try again.');
       setScreen('record');
     }
+  };
+
+  // Called by OutputScreen when user toggles perspective
+  const handleReformat = async (transcript, perspective) => {
+    const voiceExamples = localStorage.getItem('spoke_voice_examples') || '';
+    const writingIntent = localStorage.getItem('spoke_writing_intent') || '';
+    const data = await reformatTranscript(transcript, { voiceExamples, writingIntent, perspective });
+    setOutput(data);
   };
 
   // Called by OutputScreen when user hits "+ New recording"
@@ -44,10 +64,11 @@ export default function App() {
         </div>
       )}
 
+      {screen === 'setup' && <SetupScreen onComplete={() => setScreen('record')} />}
       {screen === 'record' && <RecordScreen onSubmit={handleSubmit} />}
       {screen === 'loading' && <LoadingScreen />}
       {screen === 'output' && output && (
-        <OutputScreen output={output} onReset={handleReset} />
+        <OutputScreen output={output} onReset={handleReset} onReformat={handleReformat} />
       )}
     </div>
   );

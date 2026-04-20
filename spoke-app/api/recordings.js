@@ -1,89 +1,149 @@
 // api/recordings.js — POST /api/recordings
-// Accepts a transcript, formats it with Claude, returns 4 content formats.
+// Accepts a transcript + voice profile, returns essay and 3 moment variations.
 //
 // Request body (JSON):
-//   transcript: string   — pre-built transcript from /api/transcribe
-//   audio_base64: string — (fallback) base64-encoded audio to transcribe here
-//   audio_type: string   — MIME type, e.g. "audio/webm"
+//   transcript: string           — pre-built transcript from /api/transcribe
+//   voice_examples: string       — user's writing examples (from localStorage)
+//   writing_intent: string       — user's writing intent (from localStorage)
+//   perspective: string          — 'first' | 'observational' | 'auto' (default: 'auto')
 //
 // Response (JSON):
-//   { transcript, formats: { tweet, thread, longform, caption } }
+//   { transcript, perspective, formats: { essay, moments } }
 
-import OpenAI, { toFile } from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-const FORMATTING_PROMPT = `You are a voice-to-writing translator. Your job is to turn a spoken audio transcript into platform-ready written content.
+const FORMATTING_PROMPT = `You are a writing collaborator. Your job is to read a voice transcript, find the sharpest insight in it, and write it as a piece that makes the reader see something about themselves they hadn't named before.
 
-Core rule: Preserve the speaker's exact voice, rhythm, and word choices. Do not rewrite, reframe, or impose a structure that wasn't in the original. Remove only noise — filler words (um, uh, like, you know), false starts, and repetition. Everything else stays as close to how they said it as possible.
+---
 
-Raw transcript:
+BEFORE WRITING — work through these three questions silently. Do not include this thinking in your output:
+
+1. What is the single sharpest observation or tension in this transcript? If there are multiple ideas, pick the one with the most truth — not the most interesting topic, the most honest observation.
+2. What does the reader currently do or believe that this insight speaks to? Name the specific behavior or assumption.
+3. What concrete scene, moment, or behavior could open the piece — something the reader has done or experienced themselves?
+
+---
+
+VOICE CALIBRATION
+
+Study the author's examples below. Before writing, note:
+- How long their sentences typically run — and when they shorten suddenly
+- What they open with (a scene? a person? a behavior? a claim they then subvert?)
+- Their vocabulary: plain or technical, formal or conversational
+- When they write "I" vs. when they observe from the outside
+- How they close — what is the last thing they leave with the reader?
+
+Absorb their voice. Do not imitate it.
+
+Author's writing examples:
+{VOICE_EXAMPLES}
+
+---
+
+AUTHOR'S WRITING INTENT
+
+{WRITING_INTENT}
+
+---
+
+PERSPECTIVE
+
+{PERSPECTIVE_INSTRUCTION}
+
+---
+
+RAW TRANSCRIPT
+
 {TRANSCRIPT}
 
-Output ONLY this exact JSON structure — no markdown, no explanation:
+---
+
+ESSAY — 500 to 800 words
+
+- Open with something concrete: a specific person, behavior, moment, or scene the reader has experienced. They should recognize themselves in the first two or three sentences. Do not open with an abstract claim, a question, or a statement about what you are going to say.
+- Build toward the insight — do not announce it. Let it arrive naturally from the concrete.
+- Name what people do and why it makes sense, before showing why it falls short.
+- Use the author's sentence rhythm. Short declarative sentences. Fragments are fine. Vary length — a short sentence lands harder after a longer one.
+- Close with one or two lines: what becomes possible, or what the cost is of not changing. Do not summarize what you just said.
+- No preamble. No "In this piece I will..." No conclusions that restate the opening.
+- No AI-sounding phrases: "it's important to note," "at the end of the day," "in today's world," "game-changer," "dive into," "let's explore."
+- Only include ideas from the transcript. Do not add your own.
+
+MOMENTS — exactly 3, each 150 to 250 words
+
+Each moment is a complete standalone piece — not a summary or excerpt of the essay. It is the same core insight, compressed, with a different entry point:
+- Moment 1: open with the behavior or pattern the reader recognizes in themselves
+- Moment 2: open with the cost or consequence of that pattern
+- Moment 3: open with the contrast between how most people approach it and how it could be different
+
+Same craft rules: concrete opening, insight built toward not announced, author's sentence rhythm, no throat-clearing. Each ends where it needs to — not with a summary.
+
+---
+
+Output ONLY this JSON — no markdown, no explanation, no preamble:
 {
-  "tweet": ["<option 1>", "<option 2>", "<option 3>", "<option 4>", "<option 5>"],
-  "thread": ["<tweet 1>", "<tweet 2>", "<tweet 3>"],
-  "longform": "<longform text>",
-  "caption": "<instagram caption>"
+  "essay": "...",
+  "moments": ["...", "...", "..."]
+}`;
+
+// Detect first-person usage by ratio of first-person words to total words.
+function detectPerspective(transcript) {
+  const words = transcript.split(/\s+/).length;
+  const firstPerson = (transcript.match(/\bI\b|\bI'm\b|\bI've\b|\bI'll\b|\bI'd\b|\bmy\b|\bme\b|\bmine\b/g) || []).length;
+  return firstPerson / words > 0.03 ? 'first' : 'observational';
 }
 
-Rules:
-- tweet: Array of exactly 5 options. Each is a different angle on the same idea: (1) exactly as they said it cleaned up, (2) leading with the most surprising line, (3) as a question, (4) as a bold single claim, (5) as a short personal story opener. Each under 280 chars. Keep spoken cadence — short sentences, fragments, line breaks are fine.
-- thread: 3-5 tweets. First tweet hooks. Middle tweets unpack. Last tweet lands the point. Each under 280 chars. Flows like the speaker actually talks.
-- longform: 500-1000 words. Structured with headers. Expands on the ideas in the transcript. Sounds like the speaker wrote it, not like an AI. Ready to paste into Substack.
-- caption: 50-150 words. Written for Instagram. Conversational, visual, ends with a question or call to action. 3-5 relevant hashtags on a new line at the end.
+function buildPrompt(transcript, voiceExamples, writingIntent, perspective) {
+  let prompt = FORMATTING_PROMPT;
 
-Do not add ideas that weren't in the transcript. Do not use corporate or AI-sounding language. If the speaker used slang or informal phrasing, keep it.`;
+  if (voiceExamples && voiceExamples.trim()) {
+    prompt = prompt.replace('{VOICE_EXAMPLES}', voiceExamples.trim());
+  } else {
+    prompt = prompt.replace(
+      'Study the author\'s examples below. Before writing, note:\n- How long their sentences typically run — and when they shorten suddenly\n- What they open with (a scene? a person? a behavior? a claim they then subvert?)\n- Their vocabulary: plain or technical, formal or conversational\n- When they write "I" vs. when they observe from the outside\n- How they close — what is the last thing they leave with the reader?\n\nAbsorb their voice. Do not imitate it.\n\nAuthor\'s writing examples:\n{VOICE_EXAMPLES}',
+      'No writing examples provided. Write in a clear, direct voice with short declarative sentences.'
+    );
+  }
 
-const MIME_TO_EXT = {
-  'audio/webm': 'webm',
-  'audio/ogg': 'ogg',
-  'audio/mp4': 'mp4',
-  'audio/x-m4a': 'm4a',
-  'audio/mpeg': 'mp3',
-  'audio/mp3': 'mp3',
-  'audio/wav': 'wav',
-  'audio/x-wav': 'wav',
-  'audio/aac': 'aac',
-  'audio/flac': 'flac',
-  'audio/x-flac': 'flac',
-};
+  if (writingIntent && writingIntent.trim()) {
+    prompt = prompt.replace('{WRITING_INTENT}', writingIntent.trim());
+  } else {
+    prompt = prompt.replace('{WRITING_INTENT}', 'Make the reader see something about themselves they hadn\'t named before.');
+  }
+
+  const perspectiveInstruction = perspective === 'first'
+    ? 'Write in first person throughout. The author speaks directly: "I noticed," "I started to realize," "what changed for me was." Do not shift to observational or universal framing. Stay in the author\'s voice as narrator.'
+    : 'Write in an observational voice. Not "I did this" but "most people do this," "you\'ll notice," or simply describing patterns without a narrator. The insight should feel like it applies broadly to the reader, not just to the author.';
+
+  prompt = prompt.replace('{PERSPECTIVE_INSTRUCTION}', perspectiveInstruction);
+  prompt = prompt.replace('{TRANSCRIPT}', transcript);
+  return prompt;
+}
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { transcript: prebuiltTranscript, audio_base64, audio_type = 'audio/webm' } = req.body;
+  const { transcript, voice_examples, writing_intent, perspective: requestedPerspective } = req.body;
 
-  if (!prebuiltTranscript && !audio_base64) {
-    return res.status(400).json({ error: 'transcript or audio_base64 is required' });
+  if (!transcript) {
+    return res.status(400).json({ error: 'transcript is required' });
   }
 
   try {
-    let transcript;
+    const perspective = requestedPerspective === 'first' || requestedPerspective === 'observational'
+      ? requestedPerspective
+      : detectPerspective(transcript);
 
-    if (prebuiltTranscript) {
-      transcript = prebuiltTranscript;
-    } else {
-      const audioBuffer = Buffer.from(audio_base64, 'base64');
-      const mimeType = audio_type || 'audio/webm';
-      const extension = MIME_TO_EXT[mimeType] ?? mimeType.split('/')[1] ?? 'webm';
-      const audioFile = await toFile(audioBuffer, `recording.${extension}`, { type: mimeType });
-      const transcription = await openai.audio.transcriptions.create({
-        file: audioFile,
-        model: 'whisper-1',
-      });
-      transcript = transcription.text;
-    }
+    const prompt = buildPrompt(transcript, voice_examples, writing_intent, perspective);
 
     const message = await anthropic.messages.create({
       model: 'claude-opus-4-6',
-      max_tokens: 2048,
-      messages: [{ role: 'user', content: FORMATTING_PROMPT.replace('{TRANSCRIPT}', transcript) }],
+      max_tokens: 4096,
+      messages: [{ role: 'user', content: prompt }],
     });
 
     let formats;
@@ -96,10 +156,11 @@ export default async function handler(req, res) {
       formats = JSON.parse(jsonMatch[0]);
     }
 
-    if (typeof formats.tweet === 'string') formats.tweet = [formats.tweet];
-    if (!formats.caption) formats.caption = '';
+    if (!Array.isArray(formats.moments)) {
+      formats.moments = [formats.moments].filter(Boolean);
+    }
 
-    return res.status(200).json({ transcript, formats });
+    return res.status(200).json({ transcript, perspective, formats });
   } catch (error) {
     console.error('[/api/recordings] Error:', error);
     return res.status(500).json({ error: error.message || 'Failed to process recording' });

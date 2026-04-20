@@ -3,11 +3,13 @@
 // On submit: passes audio Blob up to App.jsx via onSubmit(blob)
 
 import { useState, useRef, useEffect } from 'react';
+import SetupScreen from './SetupScreen';
 
 const MAX_DURATION = 600; // 10 minutes in seconds
 const ACCEPTED_AUDIO = '.mp3,.m4a,.wav,.webm,.ogg,.aac,.flac';
 
 export default function RecordScreen({ onSubmit }) {
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [mode, setMode] = useState('record'); // 'record' | 'upload'
   const [status, setStatus] = useState('idle'); // 'idle' | 'recording' | 'stopped'
   const [micError, setMicError] = useState(null); // null | 'permission' | 'notfound' | 'unknown'
@@ -140,7 +142,20 @@ export default function RecordScreen({ onSubmit }) {
       <div className="w-full max-w-md text-center">
 
         {/* Header */}
-        <h1 className="text-4xl font-bold mb-2 tracking-tight">Spoke</h1>
+        <div className="relative mb-2">
+          <h1 className="text-4xl font-bold tracking-tight">Spoke</h1>
+          <button
+            onClick={() => setSettingsOpen(true)}
+            className="absolute right-0 top-1/2 -translate-y-1/2 text-[#f5f5f0]/30 hover:text-[#f5f5f0]/70 transition-colors p-1"
+            aria-label="Edit voice profile"
+            title="Edit voice profile"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="3" />
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+            </svg>
+          </button>
+        </div>
         <p className="text-[#f5f5f0]/50 mb-10 text-lg">Speak your insight. We'll format it.</p>
 
         {/* Mode toggle */}
@@ -291,6 +306,25 @@ export default function RecordScreen({ onSubmit }) {
         )}
 
       </div>
+
+      {/* Settings modal */}
+      {settingsOpen && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-end sm:items-center justify-center">
+          <div className="bg-[#1a1a2e] w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-t-2xl sm:rounded-2xl border border-white/10">
+            <div className="flex items-center justify-between px-6 pt-6 pb-2">
+              <span className="text-xs text-[#f5f5f0]/30 uppercase tracking-widest font-medium">Voice profile</span>
+              <button
+                onClick={() => setSettingsOpen(false)}
+                className="text-[#f5f5f0]/30 hover:text-[#f5f5f0]/70 transition-colors text-lg leading-none"
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+            <SetupScreen isEdit onComplete={() => setSettingsOpen(false)} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
