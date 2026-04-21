@@ -42,10 +42,10 @@ export default function App() {
   };
 
   // Called by OutputScreen when user toggles perspective
-  const handleReformat = async (transcript, perspective) => {
+  const handleReformat = async (transcript, perspective, framework) => {
     const voiceExamples = localStorage.getItem('spoke_voice_examples') || '';
     const writingIntent = localStorage.getItem('spoke_writing_intent') || '';
-    const data = await reformatTranscript(transcript, { voiceExamples, writingIntent, perspective });
+    const data = await reformatTranscript(transcript, { voiceExamples, writingIntent, perspective, framework });
     setOutput(data);
   };
 

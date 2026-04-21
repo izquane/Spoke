@@ -77,7 +77,7 @@ async function transcribeInChunks(audioBlob) {
  * Sends a transcript to Claude for formatting.
  * Returns: { transcript, perspective, formats: { essay, moments } }
  */
-async function formatTranscript(transcript, { voiceExamples, writingIntent, perspective }) {
+async function formatTranscript(transcript, { voiceExamples, writingIntent, perspective, framework }) {
   const response = await fetch('/api/recordings', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -86,6 +86,7 @@ async function formatTranscript(transcript, { voiceExamples, writingIntent, pers
       voice_examples: voiceExamples,
       writing_intent: writingIntent,
       perspective,
+      framework,
     }),
   });
 
@@ -102,8 +103,8 @@ async function formatTranscript(transcript, { voiceExamples, writingIntent, pers
  * Skips the Whisper transcription step entirely.
  * Returns: { transcript, perspective, formats: { essay, moments } }
  */
-export async function reformatTranscript(transcript, { voiceExamples = '', writingIntent = '', perspective } = {}) {
-  return formatTranscript(transcript, { voiceExamples, writingIntent, perspective });
+export async function reformatTranscript(transcript, { voiceExamples = '', writingIntent = '', perspective, framework } = {}) {
+  return formatTranscript(transcript, { voiceExamples, writingIntent, perspective, framework });
 }
 
 /**

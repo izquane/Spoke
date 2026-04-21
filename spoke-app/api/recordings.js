@@ -54,6 +54,12 @@ PERSPECTIVE
 
 ---
 
+FRAMEWORK
+
+{FRAMEWORK_INSTRUCTION}
+
+---
+
 RAW TRANSCRIPT
 
 {TRANSCRIPT}
@@ -95,7 +101,13 @@ function detectPerspective(transcript) {
   return firstPerson / words > 0.03 ? 'first' : 'observational';
 }
 
-function buildPrompt(transcript, voiceExamples, writingIntent, perspective) {
+const FRAMEWORK_INSTRUCTIONS = {
+  insight: 'Write to create a moment of recognition. The reader should finish with a clear sense of "yes, that\'s exactly it." Build toward the observation — let it land without announcing it. The payoff is naming something the reader already felt but hadn\'t said.',
+  edu: 'Write to transfer understanding. The reader should finish knowing how something works that they didn\'t before. Ground each concept in a specific example before naming it. Prioritize clarity over sophistication — the test is whether they could explain it to someone else.',
+  motivation: 'Write to move someone toward a specific change. Show the cost of staying still and the possibility of moving. The payoff is momentum — not inspiration in the abstract, but the specific thing they could do differently starting today.',
+};
+
+function buildPrompt(transcript, voiceExamples, writingIntent, perspective, framework) {
   let prompt = FORMATTING_PROMPT;
 
   if (voiceExamples && voiceExamples.trim()) {
@@ -118,6 +130,10 @@ function buildPrompt(transcript, voiceExamples, writingIntent, perspective) {
     : 'Write in an observational voice. Not "I did this" but "most people do this," "you\'ll notice," or simply describing patterns without a narrator. The insight should feel like it applies broadly to the reader, not just to the author.';
 
   prompt = prompt.replace('{PERSPECTIVE_INSTRUCTION}', perspectiveInstruction);
+
+  const frameworkInstruction = FRAMEWORK_INSTRUCTIONS[framework] || FRAMEWORK_INSTRUCTIONS.insight;
+  prompt = prompt.replace('{FRAMEWORK_INSTRUCTION}', frameworkInstruction);
+
   prompt = prompt.replace('{TRANSCRIPT}', transcript);
   return prompt;
 }
@@ -127,7 +143,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { transcript, voice_examples, writing_intent, perspective: requestedPerspective } = req.body;
+  const { transcript, voice_examples, writing_intent, perspective: requestedPerspective, framework } = req.body;
 
   if (!transcript) {
     return res.status(400).json({ error: 'transcript is required' });
@@ -138,7 +154,7 @@ export default async function handler(req, res) {
       ? requestedPerspective
       : detectPerspective(transcript);
 
-    const prompt = buildPrompt(transcript, voice_examples, writing_intent, perspective);
+    const prompt = buildPrompt(transcript, voice_examples, writing_intent, perspective, framework);
 
     const message = await anthropic.messages.create({
       model: 'claude-opus-4-6',

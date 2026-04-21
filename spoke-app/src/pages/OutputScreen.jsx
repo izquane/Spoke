@@ -10,18 +10,35 @@
 import { useState } from 'react';
 import CopyButton from '../components/CopyButton';
 
+const FRAMEWORKS = [
+  { id: 'insight', label: 'Insight' },
+  { id: 'edu', label: 'Edu' },
+  { id: 'motivation', label: 'Motivation' },
+];
+
 export default function OutputScreen({ output, onReset, onReformat }) {
   const { essay, moments = [] } = output.formats;
   const [isReformatting, setIsReformatting] = useState(false);
+  const [framework, setFramework] = useState('insight');
 
-  const handlePerspectiveToggle = async (newPerspective) => {
-    if (isReformatting || newPerspective === output.perspective) return;
+  const reformat = async (perspective, fw) => {
     setIsReformatting(true);
     try {
-      await onReformat(output.transcript, newPerspective);
+      await onReformat(output.transcript, perspective, fw);
     } finally {
       setIsReformatting(false);
     }
+  };
+
+  const handlePerspectiveToggle = (newPerspective) => {
+    if (isReformatting || newPerspective === output.perspective) return;
+    reformat(newPerspective, framework);
+  };
+
+  const handleFrameworkToggle = (newFramework) => {
+    if (isReformatting || newFramework === framework) return;
+    setFramework(newFramework);
+    reformat(output.perspective, newFramework);
   };
 
   return (
@@ -57,6 +74,24 @@ export default function OutputScreen({ output, onReset, onReformat }) {
               Universal
             </button>
           </div>
+        </div>
+
+        {/* Framework toggle */}
+        <div className="flex gap-1 mb-8 bg-white/5 rounded-lg p-1">
+          {FRAMEWORKS.map(({ id, label }) => (
+            <button
+              key={id}
+              onClick={() => handleFrameworkToggle(id)}
+              disabled={isReformatting}
+              className={`flex-1 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                framework === id
+                  ? 'bg-white/15 text-[#f5f5f0]'
+                  : 'text-[#f5f5f0]/40 hover:text-[#f5f5f0]/70'
+              } disabled:opacity-40 disabled:cursor-not-allowed`}
+            >
+              {label}
+            </button>
+          ))}
         </div>
 
         {/* Reformatting overlay */}
